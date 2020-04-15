@@ -1,15 +1,14 @@
 /*
- * Copyright 2016 Netflix, Inc.
+ * Copyright 2020 Netflix, Inc.
  *
- * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
- * in compliance with the License. You may obtain a copy of the License at
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
+ * the License. You may obtain a copy of the License at
  *
  * http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software distributed under the License
- * is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express
- * or implied. See the License for the specific language governing permissions and limitations under
- * the License.
+ * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
+ * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
+ * specific language governing permissions and limitations under the License.
  */
 package com.netflix.conductor.dao.es6.index;
 
@@ -91,27 +90,20 @@ import org.slf4j.LoggerFactory;
 @Singleton
 public class ElasticSearchDAOV6 extends ElasticSearchBaseDAO implements IndexDAO {
 
-    private static final Logger logger = LoggerFactory.getLogger(ElasticSearchDAOV6.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(ElasticSearchDAOV6.class);
 
     private static final String WORKFLOW_DOC_TYPE = "workflow";
-
     private static final String TASK_DOC_TYPE = "task";
-
     private static final String LOG_DOC_TYPE = "task_log";
-
     private static final String EVENT_DOC_TYPE = "event";
-
     private static final String MSG_DOC_TYPE = "message";
 
-    private static final String className = ElasticSearchDAOV6.class.getSimpleName();
-
     private static final int RETRY_COUNT = 3;
-
     private static final int CORE_POOL_SIZE = 6;
-
     private static final long KEEP_ALIVE_TIME = 1L;
-
     private static final int UPDATE_REQUEST_RETRY_COUNT = 5;
+
+    private static final String className = ElasticSearchDAOV6.class.getSimpleName();
 
     private String workflowIndexName;
 
@@ -174,7 +166,7 @@ public class ElasticSearchDAOV6 extends ElasticSearchBaseDAO implements IndexDAO
             TimeUnit.MINUTES,
             new LinkedBlockingQueue<>(workerQueueSize),
                 (runnable, executor) -> {
-                    logger.warn("Request  {} to async dao discarded in executor {}", runnable, executor);
+                    LOGGER.warn("Request  {} to async dao discarded in executor {}", runnable, executor);
                     Monitors.recordDiscardedIndexingCount("indexQueue");
                 });
 
@@ -187,7 +179,7 @@ public class ElasticSearchDAOV6 extends ElasticSearchBaseDAO implements IndexDAO
             TimeUnit.SECONDS,
             new LinkedBlockingQueue<>(workerQueueSize),
             (runnable, executor) -> {
-                logger.warn("Request {} to async log dao discarded in executor {}", runnable, executor);
+                LOGGER.warn("Request {} to async log dao discarded in executor {}", runnable, executor);
                 Monitors.recordDiscardedIndexingCount("logQueue");
             });
 
@@ -197,7 +189,7 @@ public class ElasticSearchDAOV6 extends ElasticSearchBaseDAO implements IndexDAO
 
     @PreDestroy
     private void shutdown() {
-        logger.info("Gracefully shutdown executor service");
+        LOGGER.info("Gracefully shutdown executor service");
         shutdownExecutorService(logExecutorService);
         shutdownExecutorService(executorService);
     }
@@ -206,13 +198,13 @@ public class ElasticSearchDAOV6 extends ElasticSearchBaseDAO implements IndexDAO
         try {
             execService.shutdown();
             if (execService.awaitTermination(30, TimeUnit.SECONDS)) {
-                logger.debug("tasks completed, shutting down");
+                LOGGER.debug("tasks completed, shutting down");
             } else {
-                logger.warn("Forcing shutdown after waiting for 30 seconds");
+                LOGGER.warn("Forcing shutdown after waiting for 30 seconds");
                 execService.shutdownNow();
             }
         } catch (InterruptedException ie) {
-            logger.warn("Shutdown interrupted, invoking shutdownNow on scheduledThreadPoolExecutor for delay queue");
+            LOGGER.warn("Shutdown interrupted, invoking shutdownNow on scheduledThreadPoolExecutor for delay queue");
             execService.shutdownNow();
             Thread.currentThread().interrupt();
         }
@@ -248,7 +240,7 @@ public class ElasticSearchDAOV6 extends ElasticSearchBaseDAO implements IndexDAO
             updateIndexesNames();
             Executors.newScheduledThreadPool(1).scheduleAtFixedRate(this::updateIndexesNames, 0, 1, TimeUnit.HOURS);
         } catch (Exception e) {
-            logger.error("Error creating index templates", e);
+            LOGGER.error("Error creating index templates", e);
         }
     }
 
@@ -262,12 +254,12 @@ public class ElasticSearchDAOV6 extends ElasticSearchBaseDAO implements IndexDAO
         String template = "template_" + type;
         GetIndexTemplatesResponse result = elasticSearchClient.admin().indices().prepareGetTemplates(template).execute().actionGet();
         if (result.getIndexTemplates().isEmpty()) {
-            logger.info("Creating the index template '{}'", template);
+            LOGGER.info("Creating the index template '{}'", template);
             try {
                 String templateSource = loadTypeMappingSource("/" + template + ".json");
                 elasticSearchClient.admin().indices().preparePutTemplate(template).setSource(templateSource.getBytes(), XContentType.JSON).execute().actionGet();
             } catch (Exception e) {
-                logger.error("Failed to init " + template, e);
+                LOGGER.error("Failed to init " + template, e);
             }
         }
     }
@@ -310,7 +302,7 @@ public class ElasticSearchDAOV6 extends ElasticSearchBaseDAO implements IndexDAO
                         .create(createIndexRequest)
                         .actionGet();
             } catch (ResourceAlreadyExistsException done) {
-                logger.error("Failed to update log index name: {}", indexName, done);
+                LOGGER.error("Failed to update log index name: {}", indexName, done);
             }
         }
     }
@@ -318,12 +310,12 @@ public class ElasticSearchDAOV6 extends ElasticSearchBaseDAO implements IndexDAO
     private void addTypeMapping(String indexName, String type, String sourcePath) {
         GetMappingsResponse getMappingsResponse = elasticSearchClient.admin().indices().prepareGetMappings(indexName).addTypes(type).execute().actionGet();
         if (getMappingsResponse.mappings().isEmpty()) {
-            logger.info("Adding the {} type mappings", indexName);
+            LOGGER.info("Adding the {} type mappings", indexName);
             try {
                 String source = loadTypeMappingSource(sourcePath);
                 elasticSearchClient.admin().indices().preparePutMapping(indexName).setType(type).setSource(source, XContentType.JSON).execute().actionGet();
             } catch (Exception e) {
-                logger.error("Failed to init index " + indexName + " mappings", e);
+                LOGGER.error("Failed to init index " + indexName + " mappings", e);
             }
         }
     }
@@ -347,12 +339,12 @@ public class ElasticSearchDAOV6 extends ElasticSearchBaseDAO implements IndexDAO
             );
 
             long endTime = Instant.now().toEpochMilli();
-            logger.debug("Time taken {} for indexing workflow: {}", endTime - startTime, workflow.getWorkflowId());
+            LOGGER.debug("Time taken {} for indexing workflow: {}", endTime - startTime, workflow.getWorkflowId());
             Monitors.recordESIndexTime("index_workflow", WORKFLOW_DOC_TYPE, endTime - startTime);
             Monitors.recordWorkerQueueSize("indexQueue", ((ThreadPoolExecutor) executorService).getQueue().size());
         } catch (Exception e) {
             Monitors.error(className, "indexWorkflow");
-            logger.error("Failed to index workflow: {}", workflow.getWorkflowId(), e);
+            LOGGER.error("Failed to index workflow: {}", workflow.getWorkflowId(), e);
         }
     }
 
@@ -374,11 +366,11 @@ public class ElasticSearchDAOV6 extends ElasticSearchBaseDAO implements IndexDAO
             req.upsert(doc, XContentType.JSON);
             indexObject(req, TASK_DOC_TYPE);
             long endTime = Instant.now().toEpochMilli();
-            logger.debug("Time taken {} for  indexing task:{} in workflow: {}", endTime - startTime, task.getTaskId(), task.getWorkflowInstanceId());
+            LOGGER.debug("Time taken {} for  indexing task:{} in workflow: {}", endTime - startTime, task.getTaskId(), task.getWorkflowInstanceId());
             Monitors.recordESIndexTime("index_task", TASK_DOC_TYPE, endTime - startTime);
             Monitors.recordWorkerQueueSize("indexQueue", ((ThreadPoolExecutor) executorService).getQueue().size());
         } catch (Exception e) {
-            logger.error("Failed to index task: {}", task.getTaskId(), e);
+            LOGGER.error("Failed to index task: {}", task.getTaskId(), e);
         }
     }
 
@@ -427,14 +419,14 @@ public class ElasticSearchDAOV6 extends ElasticSearchBaseDAO implements IndexDAO
                 "addTaskExecutionLogs"
             );
             long endTime = Instant.now().toEpochMilli();
-            logger.debug("Time taken {} for indexing taskExecutionLogs", endTime - startTime);
+            LOGGER.debug("Time taken {} for indexing taskExecutionLogs", endTime - startTime);
             Monitors.recordESIndexTime("index_task_execution_logs", LOG_DOC_TYPE, endTime - startTime);
             Monitors.recordWorkerQueueSize("logQueue", ((ThreadPoolExecutor) logExecutorService).getQueue().size());
         } catch (Exception e) {
             List<String> taskIds = taskExecLogs.stream()
                 .map(TaskExecLog::getTaskId)
                 .collect(Collectors.toList());
-            logger.error("Failed to index task execution logs for tasks: {}", taskIds, e);
+            LOGGER.error("Failed to index task execution logs for tasks: {}", taskIds, e);
         }
     }
 
@@ -455,7 +447,7 @@ public class ElasticSearchDAOV6 extends ElasticSearchBaseDAO implements IndexDAO
 
             return mapTaskExecLogsResponse(srb.execute().actionGet());
         } catch (Exception e) {
-            logger.error("Failed to get task execution logs for task: {}", taskId, e);
+            LOGGER.error("Failed to get task execution logs for task: {}", taskId, e);
         }
         return null;
     }
@@ -486,10 +478,10 @@ public class ElasticSearchDAOV6 extends ElasticSearchBaseDAO implements IndexDAO
             req.upsert(doc, XContentType.JSON);
             indexObject(req, MSG_DOC_TYPE);
             long endTime = Instant.now().toEpochMilli();
-            logger.debug("Time taken {} for  indexing message: {}", endTime - startTime, message.getId());
+            LOGGER.debug("Time taken {} for  indexing message: {}", endTime - startTime, message.getId());
             Monitors.recordESIndexTime("add_message", MSG_DOC_TYPE, endTime - startTime);
         } catch (Exception e) {
-            logger.error("Failed to index message: {}", message.getId(), e);
+            LOGGER.error("Failed to index message: {}", message.getId(), e);
         }
     }
 
@@ -510,7 +502,7 @@ public class ElasticSearchDAOV6 extends ElasticSearchBaseDAO implements IndexDAO
 
             return mapGetMessagesResponse(srb.execute().actionGet());
         } catch (Exception e) {
-            logger.error("Failed to get messages for queue: {}", queue, e);
+            LOGGER.error("Failed to get messages for queue: {}", queue, e);
         }
         return null;
     }
@@ -538,11 +530,11 @@ public class ElasticSearchDAOV6 extends ElasticSearchBaseDAO implements IndexDAO
             UpdateRequest req = buildUpdateRequest(id, doc, eventIndexName, EVENT_DOC_TYPE);
             indexObject(req, EVENT_DOC_TYPE);
             long endTime = Instant.now().toEpochMilli();
-            logger.debug("Time taken {} for indexing event execution: {}", endTime - startTime, eventExecution.getId());
+            LOGGER.debug("Time taken {} for indexing event execution: {}", endTime - startTime, eventExecution.getId());
             Monitors.recordESIndexTime("add_event_execution", EVENT_DOC_TYPE, endTime - startTime);
             Monitors.recordWorkerQueueSize("logQueue", ((ThreadPoolExecutor) logExecutorService).getQueue().size());
         } catch (Exception e) {
-            logger.error("Failed to index event execution: {}", eventExecution.getId(), e);
+            LOGGER.error("Failed to index event execution: {}", eventExecution.getId(), e);
         }
     }
 
@@ -563,7 +555,7 @@ public class ElasticSearchDAOV6 extends ElasticSearchBaseDAO implements IndexDAO
 
             return mapEventExecutionsResponse(srb.execute().actionGet());
         } catch (Exception e) {
-            logger.error("Failed to get executions for event: {}", event, e);
+            LOGGER.error("Failed to get executions for event: {}", event, e);
         }
         return null;
     }
@@ -591,11 +583,11 @@ public class ElasticSearchDAOV6 extends ElasticSearchBaseDAO implements IndexDAO
                 "updateWithRetry"
             );
             long endTime = Instant.now().toEpochMilli();
-            logger.debug("Time taken {} for indexing object of type: {}", endTime - startTime, docType);
+            LOGGER.debug("Time taken {} for indexing object of type: {}", endTime - startTime, docType);
             Monitors.recordESIndexTime("index_object", docType, endTime - startTime);
         } catch (Exception e) {
             Monitors.error(className, "index");
-            logger.error("Failed to index {} for requests", request.numberOfActions(), e);
+            LOGGER.error("Failed to index {} for requests", request.numberOfActions(), e);
         }
     }
 
@@ -616,14 +608,14 @@ public class ElasticSearchDAOV6 extends ElasticSearchBaseDAO implements IndexDAO
             DeleteRequest request = new DeleteRequest(workflowIndexName, WORKFLOW_DOC_TYPE, workflowId);
             DeleteResponse response = elasticSearchClient.delete(request).actionGet();
             if (response.getResult() == DocWriteResponse.Result.DELETED) {
-                logger.error("Index removal failed - document not found by id: {}", workflowId);
+                LOGGER.error("Index removal failed - document not found by id: {}", workflowId);
             }
             long endTime = Instant.now().toEpochMilli();
-            logger.debug("Time taken {} for removing workflow: {}", endTime - startTime, workflowId);
+            LOGGER.debug("Time taken {} for removing workflow: {}", endTime - startTime, workflowId);
             Monitors.recordESIndexTime("remove_workflow", WORKFLOW_DOC_TYPE, endTime - startTime);
             Monitors.recordWorkerQueueSize("indexQueue", ((ThreadPoolExecutor) executorService).getQueue().size());
         } catch (Throwable e) {
-            logger.error("Failed to remove workflow {} from index", workflowId, e);
+            LOGGER.error("Failed to remove workflow {} from index", workflowId, e);
             Monitors.error(className, "remove");
         }
     }
@@ -645,7 +637,7 @@ public class ElasticSearchDAOV6 extends ElasticSearchBaseDAO implements IndexDAO
         Map<String, Object> source = IntStream.range(0, keys.length).boxed()
             .collect(Collectors.toMap(i -> keys[i], i -> values[i]));
         request.doc(source);
-        logger.debug("Updating workflow {} in elasticsearch index: {}", workflowInstanceId, workflowIndexName);
+        LOGGER.debug("Updating workflow {} in elasticsearch index: {}", workflowInstanceId, workflowIndexName);
         new RetryUtil<>().retryOnException(
             () -> elasticSearchClient.update(request).actionGet(),
             null,
@@ -655,7 +647,7 @@ public class ElasticSearchDAOV6 extends ElasticSearchBaseDAO implements IndexDAO
             "updateWorkflow"
         );
         long endTime = Instant.now().toEpochMilli();
-        logger.debug("Time taken {} for updating workflow: {}", endTime - startTime, workflowInstanceId);
+        LOGGER.debug("Time taken {} for updating workflow: {}", endTime - startTime, workflowInstanceId);
         Monitors.recordESIndexTime("update_workflow", WORKFLOW_DOC_TYPE, endTime - startTime);
         Monitors.recordWorkerQueueSize("indexQueue", ((ThreadPoolExecutor) executorService).getQueue().size());
     }
@@ -678,7 +670,7 @@ public class ElasticSearchDAOV6 extends ElasticSearchBaseDAO implements IndexDAO
             }
         }
 
-        logger.debug("Unable to find Workflow: {} in ElasticSearch index: {}.", workflowInstanceId, workflowIndexName);
+        LOGGER.debug("Unable to find Workflow: {} in ElasticSearch index: {}.", workflowInstanceId, workflowIndexName);
         return null;
     }
 
@@ -786,7 +778,7 @@ public class ElasticSearchDAOV6 extends ElasticSearchBaseDAO implements IndexDAO
             .filter(entry -> (System.currentTimeMillis() - entry.getValue().getLastFlushTime()) >= asyncBufferFlushTimeout * 1000)
             .filter(entry -> entry.getValue().getBulkRequestBuilder() != null && entry.getValue().getBulkRequestBuilder().numberOfActions() > 0)
             .forEach(entry -> {
-                logger.debug("Flushing bulk request buffer for type {}, size: {}", entry.getKey(), entry.getValue().getBulkRequestBuilder().numberOfActions());
+                LOGGER.debug("Flushing bulk request buffer for type {}, size: {}", entry.getKey(), entry.getValue().getBulkRequestBuilder().numberOfActions());
                 indexBulkRequest(entry.getKey());
             });
     }

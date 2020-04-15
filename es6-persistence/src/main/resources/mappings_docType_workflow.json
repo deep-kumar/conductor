@@ -61,10 +61,6 @@
         "index": true,
         "doc_values": true
       },
-      "rawJSON": {
-        "type": "text",
-        "index": false
-      },
       "event": {
         "type": "keyword",
         "index": true
